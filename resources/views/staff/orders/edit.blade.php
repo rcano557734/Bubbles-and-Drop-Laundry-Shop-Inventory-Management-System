@@ -1,105 +1,70 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+@extends('staff.layout')
 
-    <title>Manage Laundry Order - Bubble & Drop</title>
+@section('title', 'Manage Order')
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
-</head>
+@section('content')
 
-<body class="min-h-screen bg-sky-100 flex items-center justify-center p-6">
+    <div class="mb-7">
+        <p class="text-sm font-semibold text-blue-600">
+            Laundry Operations
+        </p>
 
-    <div class="w-full max-w-2xl bg-white rounded-2xl shadow-lg p-8">
+        <h1 class="mt-1 text-3xl font-extrabold text-[#0d2a7a]">
+            Manage Order
+        </h1>
 
-        <div class="mb-8">
+        <p class="mt-1 text-sm text-slate-500">
+            Update the customer's laundry weight, calculated loads, total price, and processing status.
+        </p>
+    </div>
 
-            <h1 class="text-3xl font-bold text-blue-800">
-                Manage Laundry Order
-            </h1>
+    {{-- Order Information --}}
+    <div class="mb-5 grid grid-cols-1 gap-4 md:grid-cols-3">
 
-            <p class="text-gray-600 mt-1">
-                {{ $order->service_number }}
+        <div class="rounded-2xl border border-blue-100 bg-white p-5">
+            <p class="text-xs font-bold uppercase tracking-wide text-blue-500">
+                Service Number
             </p>
 
+            <p class="mt-2 text-lg font-extrabold text-[#0d2a7a]">
+                {{ $order->service_number }}
+            </p>
         </div>
 
+        <div class="rounded-2xl border border-blue-100 bg-white p-5">
+            <p class="text-xs font-bold uppercase tracking-wide text-blue-500">
+                Customer
+            </p>
 
-        <div class="grid grid-cols-2 gap-4 mb-8">
+            <p class="mt-2 text-lg font-extrabold text-slate-800">
+                {{ $order->customer->full_name }}
+            </p>
 
-            <div class="bg-gray-50 rounded-lg p-4">
-
-                <p class="text-sm text-gray-500">
-                    Customer
+            @if ($order->customer->contact_number)
+                <p class="mt-1 text-xs text-slate-400">
+                    {{ $order->customer->contact_number }}
                 </p>
-
-                <p class="font-semibold text-lg">
-                    {{ $order->customer->full_name }}
-                </p>
-
-            </div>
-
-
-            <div class="bg-gray-50 rounded-lg p-4">
-
-                <p class="text-sm text-gray-500">
-                    Customer ID
-                </p>
-
-                <p class="font-semibold text-lg">
-                    {{ $order->customer->customer_code }}
-                </p>
-
-            </div>
-
-
-            <div class="bg-gray-50 rounded-lg p-4">
-
-                <p class="text-sm text-gray-500">
-                    Service
-                </p>
-
-                <p class="font-semibold">
-                    {{ $order->service->service_name }}
-                </p>
-
-            </div>
-
-
-            <div class="bg-gray-50 rounded-lg p-4">
-
-                <p class="text-sm text-gray-500">
-                    Price per Load
-                </p>
-
-                <p class="font-semibold">
-                    ₱{{ number_format($order->service->price, 2) }}
-                </p>
-
-            </div>
-
+            @endif
         </div>
 
+        <div class="rounded-2xl border border-blue-100 bg-white p-5">
+            <p class="text-xs font-bold uppercase tracking-wide text-blue-500">
+                Service
+            </p>
 
-        @if ($errors->any())
+            <p class="mt-2 text-lg font-extrabold text-slate-800">
+                {{ $order->service->service_name }}
+            </p>
 
-            <div class="mb-6 rounded-lg bg-red-100
-                        border border-red-300
-                        text-red-700 px-4 py-3">
+            <p class="mt-1 text-xs text-slate-400">
+                ₱{{ number_format($order->service->price, 2) }} per load
+            </p>
+        </div>
 
-                <ul class="list-disc list-inside">
+    </div>
 
-                    @foreach ($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-
-                </ul>
-
-            </div>
-
-        @endif
-
+    {{-- Manage Form --}}
+    <section class="rounded-2xl border border-blue-100 bg-white p-6">
 
         <form
             method="POST"
@@ -110,77 +75,106 @@
             @csrf
             @method('PUT')
 
-
+            {{-- Weight --}}
             <div>
-
                 <label
                     for="kilos"
-                    class="block text-sm font-semibold text-gray-700 mb-2"
+                    class="mb-2 block text-xs font-bold uppercase tracking-wide text-blue-600"
                 >
-                    Actual Laundry Weight (kg)
+                    Actual Weight (kg)
                 </label>
 
                 <input
-                    type="number"
-                    name="kilos"
                     id="kilos"
-                    value="{{ old('kilos', $order->kilos) }}"
+                    name="kilos"
+                    type="number"
                     step="0.01"
                     min="0.01"
+                    value="{{ old('kilos', $order->kilos) }}"
                     required
-                    class="w-full border border-gray-300
-                           rounded-lg px-4 py-3"
+                    placeholder="Enter actual weighed kilos"
+                    class="w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 >
 
-                <p class="mt-2 text-sm text-gray-500">
-                    Maximum weight per load: 8.50 kg
+                <p class="mt-2 text-xs text-slate-400">
+                    Staff enters the actual weight after the laundry is weighed.
                 </p>
+
+                @error('kilos')
+                    <p class="mt-2 text-sm font-semibold text-red-600">
+                        {{ $message }}
+                    </p>
+                @enderror
+            </div>
+
+            {{-- Calculation Preview --}}
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+
+                <div class="rounded-2xl border border-blue-100 bg-blue-50 p-5">
+                    <p class="text-xs font-bold uppercase tracking-wide text-blue-600">
+                        Load Count
+                    </p>
+
+                    <p
+                        id="loadPreview"
+                        class="mt-2 text-3xl font-extrabold text-[#0d2a7a]"
+                    >
+                        {{ $order->load_count ?: 0 }}
+                    </p>
+
+                    <p class="mt-1 text-xs text-slate-500">
+                        Based on 8.50 kg per load
+                    </p>
+                </div>
+
+                <div class="rounded-2xl border border-green-100 bg-green-50 p-5">
+                    <p class="text-xs font-bold uppercase tracking-wide text-green-600">
+                        Total Price
+                    </p>
+
+                    <p
+                        id="pricePreview"
+                        class="mt-2 text-3xl font-extrabold text-green-700"
+                    >
+                        ₱{{ number_format($order->total_amount, 2) }}
+                    </p>
+
+                    <p class="mt-1 text-xs text-slate-500">
+                        Automatically calculated
+                    </p>
+                </div>
+
+                <div class="rounded-2xl border border-amber-100 bg-amber-50 p-5">
+                    <p class="text-xs font-bold uppercase tracking-wide text-amber-600">
+                        Capacity Rule
+                    </p>
+
+                    <p class="mt-2 text-lg font-extrabold text-amber-700">
+                        8.50 kg = 1 load
+                    </p>
+
+                    <p class="mt-1 text-xs text-slate-500">
+                        Anything above 8.50 kg adds another load.
+                    </p>
+                </div>
 
             </div>
 
-
-            <div class="bg-blue-50 rounded-lg p-5">
-
-                <p class="text-sm text-blue-600 font-semibold">
-                    Number of Loads
-                </p>
-
-                <p class="text-3xl font-bold text-blue-800 mt-1">
-                    {{ $order->load_count ?: 'Not calculated' }}
-                </p>
-
-            </div>
-
-
-            <div class="bg-green-50 rounded-lg p-5">
-
-                <p class="text-sm text-green-600 font-semibold">
-                    Current Total
-                </p>
-
-                <p class="text-3xl font-bold text-green-800 mt-1">
-                    ₱{{ number_format($order->total_amount, 2) }}
-                </p>
-
-            </div>
-
-
+            {{-- Status --}}
             <div>
-
                 <label
                     for="status"
-                    class="block text-sm font-semibold text-gray-700 mb-2"
+                    class="mb-2 block text-xs font-bold uppercase tracking-wide text-blue-600"
                 >
                     Laundry Status
                 </label>
 
                 <select
-                    name="status"
                     id="status"
-                    class="w-full border border-gray-300
-                           rounded-lg px-4 py-3"
+                    name="status"
+                    required
+                    class="w-full rounded-xl border border-blue-100 bg-white px-4 py-3 text-sm text-slate-800 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 >
-
                     @foreach ([
                         'Received',
                         'Washing',
@@ -188,43 +182,74 @@
                         'Folding',
                         'Ready for Pickup',
                         'Claimed'
-                    ] as $status)
+                    ] as $option)
 
                         <option
-                            value="{{ $status }}"
-                            @selected($order->status === $status)
+                            value="{{ $option }}"
+                            @selected(old('status', $order->status) === $option)
                         >
-                            {{ $status }}
+                            {{ $option }}
                         </option>
 
                     @endforeach
-
                 </select>
+
+                @error('status')
+                    <p class="mt-2 text-sm font-semibold text-red-600">
+                        {{ $message }}
+                    </p>
+                @enderror
+            </div>
+
+            {{-- Buttons --}}
+            <div class="flex flex-col gap-3 pt-2 sm:flex-row">
+
+                <button
+                    type="submit"
+                    class="rounded-xl bg-[#4f74d9] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#3f63c8]"
+                >
+                    Save Changes
+                </button>
+
+                <a
+                    href="{{ route('staff.orders.index') }}"
+                    class="rounded-xl border border-blue-100 bg-white px-6 py-3 text-center text-sm font-bold text-slate-600 transition hover:bg-blue-50"
+                >
+                    Cancel
+                </a>
 
             </div>
 
-
-            <button
-                type="submit"
-                class="w-full bg-blue-700 text-white
-                       font-semibold py-3 rounded-lg
-                       hover:bg-blue-800 transition"
-            >
-                Save Changes
-            </button>
-
-
-            <a
-                href="{{ route('staff.orders.index') }}"
-                class="block text-center text-gray-600
-                       hover:text-blue-700"
-            >
-                Back to Orders
-            </a>
-
         </form>
 
-    </div>
+    </section>
 
-</body>
-</html>
+    <script>
+        const kilosInput = document.getElementById('kilos');
+        const loadPreview = document.getElementById('loadPreview');
+        const pricePreview = document.getElementById('pricePreview');
+
+        const pricePerLoad = {{ (float) $order->service->price }};
+
+        function updateCalculation() {
+            const kilos = parseFloat(kilosInput.value);
+
+            if (!kilos || kilos <= 0) {
+                loadPreview.textContent = '0';
+                pricePreview.textContent = '₱0.00';
+                return;
+            }
+
+            const loads = Math.ceil(kilos / 8.50);
+            const total = loads * pricePerLoad;
+
+            loadPreview.textContent = loads;
+            pricePreview.textContent = '₱' + total.toFixed(2);
+        }
+
+        kilosInput.addEventListener('input', updateCalculation);
+
+        updateCalculation();
+    </script>
+
+@endsection

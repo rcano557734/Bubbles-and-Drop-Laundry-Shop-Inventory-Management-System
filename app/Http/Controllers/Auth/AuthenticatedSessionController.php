@@ -28,11 +28,17 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        if ($request->user()->role === 'admin') {
+        $user = $request->user();
+
+        if ($user->role === 'admin') {
             return redirect()->route('admin.dashboard');
         }
 
-        return redirect()->route('staff.dashboard');
+        if ($user->role === 'staff') {
+            return redirect()->route('staff.dashboard');
+        }
+
+        abort(403);
     }
 
     /**
@@ -46,6 +52,6 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerateToken();
 
-        return redirect('/');
+        return redirect()->route('login');
     }
 }
