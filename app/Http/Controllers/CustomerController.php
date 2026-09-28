@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\LaundryOrder;
+use App\Models\Service;
 use Illuminate\Http\Request;
 
 class CustomerController extends Controller
@@ -28,8 +30,6 @@ class CustomerController extends Controller
             $validated['full_name']
         );
 
-        // Contact number is optional.
-        // If the customer provides it, use it as an additional check.
         if (!empty($validated['contact_number'])) {
             $customerQuery->where(
                 'contact_number',
@@ -42,7 +42,10 @@ class CustomerController extends Controller
         if (!$customer) {
             return back()
                 ->withInput()
-                ->with('error', 'Customer information could not be verified.');
+                ->with(
+                    'error',
+                    'Customer information could not be verified.'
+                );
         }
 
         $order = $customer->laundryOrders()
@@ -54,31 +57,90 @@ class CustomerController extends Controller
         if (!$order) {
             return back()
                 ->withInput()
-                ->with('error', 'No active laundry order was found for this customer.');
+                ->with(
+                    'error',
+                    'No active laundry order was found for this customer.'
+                );
         }
 
-        return view('customer.laundry-status', compact('customer', 'order'));
+        return view(
+            'customer.laundry-status',
+            compact('customer', 'order')
+        );
     }
-    public function showAvailService()
-{
-    $services = \App\Models\Service::whereIn('service_name', [
-        'Self Service',
-        'Wash, Dry, and Fold',
-    ])->get();
 
-    return view('customer.avail-service', compact('services'));
-}
+    public function showAvailService()
+    {
+        $services = Service::whereIn('service_name', [
+            'Self Service',
+            'Wash, Dry, and Fold',
+        ])->get();
+
+        $detergentService = Service::where(
+            'service_name',
+            'Detergent'
+        )->first();
+
+        $conditionerService = Service::where(
+            'service_name',
+            'Fabric Conditioner'
+        )->first();
+
+        $detergentPrice = (float) (
+            $detergentService?->price ?? 10
+        );
+
+        $conditionerPrice = (float) (
+            $conditionerService?->price ?? 15
+        );
+
+        return view(
+            'customer.avail-service',
+            compact(
+                'services',
+                'detergentPrice',
+                'conditionerPrice'
+            )
+        );
+    }
 
     public function createOrder(Request $request)
     {
         $validated = $request->validate([
-            'service_id' => ['required', 'exists:services,id'],
-            'full_name' => ['required', 'string', 'max:255'],
-            'contact_number' => ['nullable', 'string', 'max:20'],
+            'service_id' => [
+                'required',
+                'exists:services,id',
+            ],
+
+            'full_name' => [
+                'required',
+                'string',
+                'max:255',
+            ],
+
+            'contact_number' => [
+                'nullable',
+                'string',
+                'max:20',
+            ],
+
+            'detergent_quantity' => [
+                'nullable',
+                'integer',
+                'min:0',
+                'max:1',
+            ],
+
+            'fabric_conditioner_quantity' => [
+                'nullable',
+                'integer',
+                'min:0',
+                'max:1',
+            ],
         ]);
 
-        // Find existing customer by name and optional contact number
-        $customerQuery = \App\Models\Customer::where(
+        // Find existing customer
+        $customerQuery = Customer::where(
             'full_name',
             $validated['full_name']
         );
@@ -92,37 +154,113 @@ class CustomerController extends Controller
 
         $customer = $customerQuery->first();
 
-        // Create new customer if not found
+        // Create customer if not found
         if (!$customer) {
-            $lastCustomer = \App\Models\Customer::orderByDesc('id')->first();
+            $lastCustomer = Customer::orderByDesc('id')->first();
 
             $nextCode = $lastCustomer
                 ? ((int) $lastCustomer->customer_code + 1)
                 : 101;
 
-            $customer = \App\Models\Customer::create([
+            $customer = Customer::create([
                 'customer_code' => (string) $nextCode,
                 'full_name' => $validated['full_name'],
-                'contact_number' => $validated['contact_number'] ?? null,
+                'contact_number' =>
+                    $validated['contact_number'] ?? null,
             ]);
         }
 
-        $service = \App\Models\Service::findOrFail(
+        $existingOrder = $customer->laundryOrders()
+            ->where('status', '!=', 'Claimed')
+            ->latest()
+            ->first();
+
+        if ($existingOrder) {
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    "This customer already has an active laundry order ({$existingOrder->service_number}). Please wait until it is claimed before creating another order."
+                );
+        }
+
+        $service = Service::findOrFail(
             $validated['service_id']
         );
 
-        $servicePrefix = $service->service_name === 'Wash, Dry, and Fold'
-            ? 'WDF'
-            : 'SS';
+        $isSelfService =
+            $service->service_name === 'Self Service';
 
-        $lastOrder = \App\Models\LaundryOrder::where(
+        /*
+         * Self Service:
+         * 1 = customer wants the shop's product
+         * 0 = customer brings their own product
+         *
+         * WDF always gets 0 because these options
+         * are only for Self Service.
+         */
+        $detergentQuantity = $isSelfService
+            ? (int) ($validated['detergent_quantity'] ?? 0)
+            : 0;
+
+        $conditionerQuantity = $isSelfService
+            ? (int) (
+                $validated['fabric_conditioner_quantity']
+                ?? 0
+            )
+            : 0;
+
+        $detergentService = Service::where(
+            'service_name',
+            'Detergent'
+        )->first();
+
+        $conditionerService = Service::where(
+            'service_name',
+            'Fabric Conditioner'
+        )->first();
+
+        $detergentPrice = (float) (
+            $detergentService?->price ?? 10
+        );
+
+        $conditionerPrice = (float) (
+            $conditionerService?->price ?? 15
+        );
+
+        /*
+         * Self Service:
+         * ₱100 flat fee
+         * + optional detergent
+         * + optional fabric conditioner
+         *
+         * WDF:
+         * Price is calculated later after staff enters weight.
+         */
+        $initialTotal = $isSelfService
+            ? 100
+                + ($detergentQuantity * $detergentPrice)
+                + ($conditionerQuantity * $conditionerPrice)
+            : 0;
+
+        $servicePrefix =
+            $service->service_name === 'Wash, Dry, and Fold'
+                ? 'WDF'
+                : 'SS';
+
+        $lastOrder = LaundryOrder::where(
             'service_number',
             'like',
             $servicePrefix . '-%'
-        )->latest('id')->first();
+        )
+            ->latest('id')
+            ->first();
 
         $nextNumber = $lastOrder
-            ? ((int) substr($lastOrder->service_number, 4) + 1)
+            ? ((int) substr(
+                $lastOrder->service_number,
+                4
+            ) + 1)
             : 1;
 
         $serviceNumber = $servicePrefix . '-' . str_pad(
@@ -132,20 +270,36 @@ class CustomerController extends Controller
             STR_PAD_LEFT
         );
 
-        $order = \App\Models\LaundryOrder::create([
+        $order = LaundryOrder::create([
             'customer_id' => $customer->id,
             'service_id' => $service->id,
+            'order_source' => 'customer',
             'service_number' => $serviceNumber,
+
             'kilos' => null,
             'load_count' => 0,
-            'total_amount' => 0,
+
+            'detergent_quantity' =>
+                $detergentQuantity,
+
+            'fabric_conditioner_quantity' =>
+                $conditionerQuantity,
+
+            'total_amount' =>
+                $initialTotal,
+
             'status' => 'Received',
+
+            'payment_status' => 'Unpaid',
+            'paid_at' => null,
+
             'received_at' => now(),
+            'completed_at' => null,
         ]);
 
-        return view('customer.service-confirmation', compact(
-            'customer',
-            'order'
-        ));
+        return view(
+            'customer.service-confirmation',
+            compact('customer', 'order')
+        );
     }
 }

@@ -74,6 +74,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:staff')
         ->name('staff.dashboard');
 
+    Route::get('/staff/dashboard/stats', [StaffController::class, 'dashboardStats'])
+        ->middleware('role:staff')
+        ->name('staff.dashboard.stats');
+
 
     // --------------------------------------------------------
     // Profile
@@ -106,6 +110,14 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:admin,staff')
         ->name('staff.orders.store');
 
+    Route::get('/staff/orders/history', [StaffOrderController::class, 'history'])
+        ->middleware('role:admin,staff')
+        ->name('staff.orders.history');
+
+    Route::get('/staff/orders/customer-notifications', [StaffOrderController::class, 'customerNotifications'])
+        ->middleware('role:admin,staff')
+        ->name('staff.orders.customer-notifications');
+
     Route::get('/staff/orders/{order}/edit', [StaffOrderController::class, 'edit'])
         ->middleware('role:admin,staff')
         ->name('staff.orders.edit');
@@ -113,6 +125,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/staff/orders/{order}', [StaffOrderController::class, 'update'])
         ->middleware('role:admin,staff')
         ->name('staff.orders.update');
+
+    Route::post('/staff/orders/{order}/undo-claim', [StaffOrderController::class, 'undoClaim'])
+        ->middleware('role:admin,staff')
+        ->name('staff.orders.undo-claim');
 
 
     // --------------------------------------------------------

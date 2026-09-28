@@ -74,10 +74,28 @@ class MachineController extends Controller
     {
         $this->authorizeAdmin();
 
+        $hasActiveOrders = $machine
+            ->assignedOrders()
+            ->whereIn('status', [
+                'Washing',
+                'Drying',
+            ])
+            ->exists();
+
+        if ($hasActiveOrders) {
+            return back()->with(
+                'error',
+                'This machine cannot be deleted because it is currently assigned to an active laundry order.'
+            );
+        }
+
         $machine->delete();
 
         return redirect()
             ->route('admin.machines.index')
-            ->with('success', 'Machine deleted successfully.');
+            ->with(
+                'success',
+                'Machine deleted successfully.'
+            );
     }
 }

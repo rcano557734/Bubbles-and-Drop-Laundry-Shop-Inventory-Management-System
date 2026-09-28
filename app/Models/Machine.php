@@ -18,4 +18,19 @@ class Machine extends Model
         'last_maintenance' => 'date',
         'next_maintenance' => 'date',
     ];
+
+    // Existing relationship through machine_id.
+    public function laundryOrders()
+    {
+        return $this->hasMany(LaundryOrder::class);
+    }
+
+    // New multiple-machine relationship.
+    public function assignedOrders()
+    {
+        return $this->belongsToMany(
+            LaundryOrder::class,
+            'laundry_order_machine'
+        )->withTimestamps();
+    }
 }

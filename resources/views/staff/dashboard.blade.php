@@ -135,7 +135,9 @@
             </p>
 
             <p class="mt-2 text-3xl font-extrabold text-[#0d2a7a]">
-                {{ $activeOrders }}
+                <span id="dashboard-active-orders">
+                    {{ $activeOrders }}
+                </span>
             </p>
 
             <p class="mt-1 text-xs text-slate-500">
@@ -154,7 +156,9 @@
             </p>
 
             <p class="mt-2 text-3xl font-extrabold text-amber-600">
-                {{ $receivedOrders }}
+                <span id="dashboard-received-orders">
+                    {{ $receivedOrders }}
+                </span>
             </p>
 
             <p class="mt-1 text-xs text-slate-500">
@@ -173,7 +177,9 @@
             </p>
 
             <p class="mt-2 text-3xl font-extrabold text-blue-600">
-                {{ $washingOrders }}
+                <span id="dashboard-washing-orders">
+                    {{ $washingOrders }}
+                </span>
             </p>
 
             <p class="mt-1 text-xs text-slate-500">
@@ -192,7 +198,9 @@
             </p>
 
             <p class="mt-2 text-3xl font-extrabold text-green-600">
-                {{ $readyOrders }}
+                <span id="dashboard-ready-orders">
+                    {{ $readyOrders }}
+                </span>
             </p>
 
             <p class="mt-1 text-xs text-slate-500">
@@ -458,5 +466,66 @@
         </div>
 
     </section>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const activeOrders = document.getElementById('dashboard-active-orders');
+        const receivedOrders = document.getElementById('dashboard-received-orders');
+        const washingOrders = document.getElementById('dashboard-washing-orders');
+        const readyOrders = document.getElementById('dashboard-ready-orders');
+
+        async function updateDashboardStats() {
+
+            try {
+
+                const response = await fetch(
+                    "{{ route('staff.dashboard.stats') }}",
+                    {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+
+                if (activeOrders) {
+                    activeOrders.textContent = data.activeOrders;
+                }
+
+                if (receivedOrders) {
+                    receivedOrders.textContent = data.receivedOrders;
+                }
+
+                if (washingOrders) {
+                    washingOrders.textContent = data.washingOrders;
+                }
+
+                if (readyOrders) {
+                    readyOrders.textContent = data.readyOrders;
+                }
+
+            } catch (error) {
+
+                console.error(
+                    'Dashboard real-time update failed:',
+                    error
+                );
+
+            }
+        }
+
+        updateDashboardStats();
+
+        setInterval(updateDashboardStats, 2000);
+
+    });
+</script>
 
 @endsection

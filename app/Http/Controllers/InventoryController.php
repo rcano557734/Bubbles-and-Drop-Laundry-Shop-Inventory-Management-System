@@ -178,6 +178,13 @@ class InventoryController extends Controller
             abort(403);
         }
 
+        if ($inventoryItem->transactions()->exists()) {
+            return back()->with(
+                'error',
+                'This inventory item cannot be deleted because it already has stock transaction records.'
+            );
+        }
+
         $inventoryItem->delete();
 
         return redirect()

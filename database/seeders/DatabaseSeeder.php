@@ -2,21 +2,17 @@
 
 namespace Database\Seeders;
 
-use App\Models\Customer;
-use App\Models\InventoryItem;
-use App\Models\InventoryTransaction;
-use App\Models\LaundryOrder;
-use App\Models\Machine;
 use App\Models\Service;
 use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
+use App\Models\Machine;
 
 class DatabaseSeeder extends Seeder
 {
     public function run(): void
     {
-        // Admin
+        // Admin account
         User::create([
             'name' => 'System Administrator',
             'email' => 'admin@bubblesdrop.com',
@@ -24,7 +20,7 @@ class DatabaseSeeder extends Seeder
             'role' => 'admin',
         ]);
 
-        // Staff
+        // Staff account
         User::create([
             'name' => 'Laundry Staff',
             'email' => 'staff@bubblesdrop.com',
@@ -32,7 +28,7 @@ class DatabaseSeeder extends Seeder
             'role' => 'staff',
         ]);
 
-        // Services
+        // System services
         Service::create([
             'service_name' => 'Wash, Dry, and Fold',
             'price' => 210,
@@ -57,63 +53,24 @@ class DatabaseSeeder extends Seeder
             'description' => 'Laundry fabric conditioner.',
         ]);
 
-        // Customers
-        Customer::create([
-            'customer_code' => '101',
-            'full_name' => 'Maria Santos',
-            'contact_number' => '09171234567',
+        Machine::create([
+            'machine_name' => 'Machine 1',
+            'status' => 'Available',
         ]);
 
-        Customer::create([
-            'customer_code' => '102',
-            'full_name' => 'Juan Dela Cruz',
-            'contact_number' => '09181234567',
+        Machine::create([
+            'machine_name' => 'Machine 2',
+            'status' => 'Available',
         ]);
 
-        // Inventory
-        InventoryItem::create([
-            'item_name' => 'Detergent',
-            'category' => 'Laundry Supply',
-            'quantity' => 50,
-            'reorder_level' => 10,
-            'unit' => 'piece',
+        Machine::create([
+            'machine_name' => 'Machine 3',
+            'status' => 'Available',
         ]);
 
-        InventoryItem::create([
-            'item_name' => 'Fabric Conditioner',
-            'category' => 'Laundry Supply',
-            'quantity' => 35,
-            'reorder_level' => 10,
-            'unit' => 'piece',
-        ]);
-
-        // Machines
-        for ($i = 1; $i <= 5; $i++) {
-            Machine::create([
-                'machine_name' => 'Washer ' . $i,
-                'status' => 'Available',
-                'maintenance_period' => 'Every 3 months',
-            ]);
-        }
-
-        // Test laundry order
-        $customer = Customer::where('customer_code', '101')->first();
-
-        $service = Service::where(
-            'service_name',
-            'Wash, Dry, and Fold'
-        )->first();
-
-        LaundryOrder::create([
-            'customer_id' => $customer->id,
-            'service_id' => $service->id,
-            'service_number' => 'WDF-00125',
-            'kilos' => 8,
-            'detergent_quantity' => 1,
-            'fabric_conditioner_quantity' => 1,
-            'total_amount' => 210,
-            'status' => 'Ready for Pickup',
-            'received_at' => now(),
+        Machine::create([
+            'machine_name' => 'Machine 4',
+            'status' => 'Available',
         ]);
     }
 }

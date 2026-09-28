@@ -69,4 +69,29 @@ class StaffController extends Controller
             'recentStockIns'
         ));
     }
+
+    public function dashboardStats()
+    {
+        if (auth()->user()->role !== 'staff') {
+            abort(403);
+        }
+
+        return response()->json([
+            'activeOrders' => \App\Models\LaundryOrder::query()
+                ->where('status', '!=', 'Claimed')
+                ->count(),
+
+            'receivedOrders' => \App\Models\LaundryOrder::query()
+                ->where('status', 'Received')
+                ->count(),
+
+            'washingOrders' => \App\Models\LaundryOrder::query()
+                ->where('status', 'Washing')
+                ->count(),
+
+            'readyOrders' => \App\Models\LaundryOrder::query()
+                ->where('status', 'Ready for Pickup')
+                ->count(),
+        ]);
+    }
 }

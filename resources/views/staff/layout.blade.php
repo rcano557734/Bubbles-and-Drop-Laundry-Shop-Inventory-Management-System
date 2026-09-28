@@ -71,17 +71,38 @@
 
 
                 {{-- CUSTOMER SERVICE --}}
-                <a
-                    href="{{ route('staff.orders.index') }}"
-                    class="flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-semibold mb-1 transition
-                        {{ request()->routeIs('staff.orders.*')
-                            ? 'bg-white/15 text-white'
-                            : 'text-blue-100 hover:bg-white/10 hover:text-white' }}"
-                >
+                <a href="{{ route('staff.orders.index') }}"
+                    class="flex items-center justify-between gap-3 px-4 py-2.5 rounded-lg
+                        arimo text-sm font-medium transition-colors
+                        {{ request()->routeIs('staff.orders.index')
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'text-slate-600 hover:bg-slate-100' }}">
 
-                    <span>🧺</span>
-                    <span>Customer Service</span>
+                    <span class="flex items-center gap-3">
+                        <span>🧺</span>
+                        <span>Customer Service</span>
+                    </span>
 
+                    <span
+                        id="customer-order-badge"
+                        class="hidden min-w-[22px] h-[22px] px-1.5
+                            rounded-full bg-red-500 text-white
+                            text-[11px] font-bold
+                            items-center justify-center"
+                    >
+                        0
+                    </span>
+
+                </a>
+
+                <a href="{{ route('staff.orders.history') }}"
+                    class="flex items-center gap-3 px-4 py-2.5 rounded-lg
+                        arimo text-sm font-medium transition-colors
+                        {{ request()->routeIs('staff.orders.history')
+                                ? 'bg-blue-100 text-blue-800'
+                                : 'text-slate-600 hover:bg-slate-100' }}">
+                    <span>📜</span>
+                    <span>Order History</span>
                 </a>
 
 
@@ -260,6 +281,178 @@
         </main>
 
     </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function () {
+
+        const badge = document.getElementById('customer-order-badge');
+
+        if (!badge) {
+            return;
+        }
+
+        let previousCount = null;
+
+        function showCustomerNotification(order) {
+
+            if (!order) {
+                return;
+            }
+
+            const existing = document.getElementById(
+                'customer-order-notification'
+            );
+
+            if (existing) {
+                existing.remove();
+            }
+
+            const notification = document.createElement('div');
+
+            notification.id = 'customer-order-notification';
+
+            notification.className =
+                'fixed top-5 right-5 z-[9999] w-[360px] bg-white rounded-2xl shadow-2xl border border-blue-100 overflow-hidden';
+
+            notification.innerHTML = `
+                <div class="p-4">
+                    <div class="flex items-start gap-3">
+
+                        <div class="w-10 h-10 rounded-full bg-blue-50
+                                    flex items-center justify-center text-xl shrink-0">
+                            🔔
+                        </div>
+
+                        <div class="flex-1">
+
+                            <div class="flex items-start justify-between gap-3">
+
+                                <div>
+                                    <p class="text-sm font-bold text-[#0d2a7a]">
+                                        New Laundry Request
+                                    </p>
+
+                                    <p class="mt-1 text-sm text-slate-600">
+                                        ${order.customer_name} submitted
+                                        ${order.service_name}.
+                                    </p>
+
+                                    <p class="mt-1 text-xs text-slate-400">
+                                        Service No. ${order.service_number}
+                                    </p>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    id="close-customer-notification"
+                                    class="text-slate-400 hover:text-slate-700 text-lg"
+                                >
+                                    ×
+                                </button>
+
+                            </div>
+
+                            <a
+                                href="{{ route('staff.orders.index') }}"
+                                class="inline-flex mt-3 px-3 py-2 rounded-lg
+                                    bg-[#4f74d9] text-white text-xs font-bold
+                                    hover:bg-[#3f63c8]"
+                            >
+                                View Customer Service
+                            </a>
+
+                        </div>
+
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(notification);
+
+            const closeButton = document.getElementById(
+                'close-customer-notification'
+            );
+
+            if (closeButton) {
+                closeButton.addEventListener('click', function () {
+                    notification.remove();
+                });
+            }
+
+            setTimeout(function () {
+                notification.remove();
+            }, 7000);
+        }
+
+        async function checkCustomerOrders() {
+
+            try {
+
+                const response = await fetch(
+                    "{{ route('staff.orders.customer-notifications') }}",
+                    {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    }
+                );
+
+                if (!response.ok) {
+                    return;
+                }
+
+                const data = await response.json();
+
+                const count = Number(data.count || 0);
+
+                // Update sidebar badge.
+                if (count > 0) {
+
+                    badge.textContent = count;
+                    badge.classList.remove('hidden');
+                    badge.classList.add('flex');
+
+                } else {
+
+                    badge.textContent = '0';
+                    badge.classList.add('hidden');
+                    badge.classList.remove('flex');
+
+                }
+
+                // Do not show a popup immediately when the page first loads.
+                if (previousCount === null) {
+                    previousCount = count;
+                    return;
+                }
+
+                // Show notification only when a new customer request appears.
+                if (count > previousCount && data.latest) {
+                    showCustomerNotification(data.latest);
+                }
+
+                previousCount = count;
+
+            } catch (error) {
+                console.error(
+                    'Customer notification check failed:',
+                    error
+                );
+            }
+        }
+
+        // First check.
+        checkCustomerOrders();
+
+        // Check every 2 seconds.
+        setInterval(
+            checkCustomerOrders,
+            2000
+        );
+
+    });
+    </script>
 
 </body>
 

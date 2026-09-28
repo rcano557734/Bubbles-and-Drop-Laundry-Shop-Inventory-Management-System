@@ -245,7 +245,7 @@
 
         <div class="overflow-x-auto">
 
-            <table class="w-full min-w-[1000px]">
+            <table class="w-full min-w-[1150px]">
 
                 <thead class="bg-[#eff6ff]">
 
@@ -276,12 +276,16 @@
                         </th>
 
                         <th class="px-5 py-4 text-xs font-bold uppercase tracking-wide text-blue-700">
-                            Status
+                            Date & Time Added
                         </th>
 
                         <th class="px-5 py-4 text-xs font-bold uppercase tracking-wide text-blue-700">
-                            Action
+                            Machine
                         </th>
+
+                        <th class="px-5 py-4 text-xs font-bold uppercase tracking-wide text-blue-700">
+                            Status
+                        </th>   
 
                     </tr>
 
@@ -419,6 +423,27 @@
 
                             </td>
 
+                            <!-- Date & Time Added -->
+                            <td class="px-5 py-4">
+
+                                <p class="text-sm font-medium text-slate-700">
+                                    {{ $order->created_at?->format('M d, Y') }}
+                                </p>
+
+                                <p class="mt-0.5 text-xs text-slate-400">
+                                    {{ $order->created_at?->format('h:i A') }}
+                                </p>
+
+                            </td>
+
+                            <!-- Machine -->
+                            <td class="px-5 py-4">
+
+                                <p class="text-sm font-medium text-slate-700">
+                                    {{ $order->machines->pluck('machine_name')->join(', ') ?: '—' }}
+                                </p>
+
+                            </td>
 
                             <!-- Status -->
                             <td class="px-5 py-4">
@@ -460,7 +485,7 @@
 
                         <tr>
 
-                            <td colspan="8" class="px-5 py-16 text-center">
+                            <td colspan="9" class="px-5 py-16 text-center">
 
                                 <div class="mx-auto w-14 h-14 rounded-2xl
                                             bg-blue-50
