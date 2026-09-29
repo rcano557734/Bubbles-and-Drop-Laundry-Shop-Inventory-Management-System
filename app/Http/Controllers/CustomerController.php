@@ -139,167 +139,277 @@ class CustomerController extends Controller
             ],
         ]);
 
-        // Find existing customer
-        $customerQuery = Customer::where(
-            'full_name',
-            $validated['full_name']
-        );
+        $order = \Illuminate\Support\Facades\DB::transaction(
+            function () use ($validated) {
 
-        if (!empty($validated['contact_number'])) {
-            $customerQuery->where(
-                'contact_number',
-                $validated['contact_number']
-            );
-        }
+                /*
+                * Find existing customer.
+                */
+                $customerQuery = Customer::query()
+                    ->where(
+                        'full_name',
+                        $validated['full_name']
+                    );
 
-        $customer = $customerQuery->first();
+                if (!empty($validated['contact_number'])) {
+                    $customerQuery->where(
+                        'contact_number',
+                        $validated['contact_number']
+                    );
+                }
 
-        // Create customer if not found
-        if (!$customer) {
-            $lastCustomer = Customer::orderByDesc('id')->first();
+                $customer = $customerQuery->first();
 
-            $nextCode = $lastCustomer
-                ? ((int) $lastCustomer->customer_code + 1)
-                : 101;
 
-            $customer = Customer::create([
-                'customer_code' => (string) $nextCode,
-                'full_name' => $validated['full_name'],
-                'contact_number' =>
-                    $validated['contact_number'] ?? null,
-            ]);
-        }
+                /*
+                * Create customer if not found.
+                */
+                if (!$customer) {
 
-        $existingOrder = $customer->laundryOrders()
-            ->where('status', '!=', 'Claimed')
-            ->latest()
-            ->first();
+                    $lastCustomer =
+                        Customer::query()
+                            ->orderByDesc('id')
+                            ->first();
 
-        if ($existingOrder) {
-            return back()
-                ->withInput()
-                ->with(
-                    'error',
-                    "This customer already has an active laundry order ({$existingOrder->service_number}). Please wait until it is claimed before creating another order."
+                    $nextCode = $lastCustomer
+                        ? ((int) $lastCustomer->customer_code + 1)
+                        : 101;
+
+                    $customer = Customer::create([
+                        'customer_code' =>
+                            (string) $nextCode,
+
+                        'full_name' =>
+                            $validated['full_name'],
+
+                        'contact_number' =>
+                            $validated['contact_number'] ?? null,
+                    ]);
+                }
+
+
+                /*
+                * Prevent another active order for this customer.
+                */
+                $existingOrder = $customer
+                    ->laundryOrders()
+                    ->where(
+                        'status',
+                        '!=',
+                        'Claimed'
+                    )
+                    ->latest()
+                    ->first();
+
+                if ($existingOrder) {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'full_name' =>
+                            "This customer already has an active laundry order ({$existingOrder->service_number}). Please wait until it is claimed before creating another order.",
+                    ]);
+                }
+
+
+                /*
+                * Get selected service.
+                */
+                $service = Service::findOrFail(
+                    $validated['service_id']
                 );
-        }
 
-        $service = Service::findOrFail(
-            $validated['service_id']
-        );
+                $isSelfService =
+                    $service->service_name === 'Self Service';
 
-        $isSelfService =
-            $service->service_name === 'Self Service';
 
-        /*
-         * Self Service:
-         * 1 = customer wants the shop's product
-         * 0 = customer brings their own product
-         *
-         * WDF always gets 0 because these options
-         * are only for Self Service.
-         */
-        $detergentQuantity = $isSelfService
-            ? (int) ($validated['detergent_quantity'] ?? 0)
-            : 0;
+                /*
+                * Self Service add-ons.
+                */
+                $detergentQuantity = $isSelfService
+                    ? (int) (
+                        $validated['detergent_quantity'] ?? 0
+                    )
+                    : 0;
 
-        $conditionerQuantity = $isSelfService
-            ? (int) (
-                $validated['fabric_conditioner_quantity']
-                ?? 0
-            )
-            : 0;
+                $conditionerQuantity = $isSelfService
+                    ? (int) (
+                        $validated['fabric_conditioner_quantity']
+                        ?? 0
+                    )
+                    : 0;
 
-        $detergentService = Service::where(
-            'service_name',
-            'Detergent'
-        )->first();
 
-        $conditionerService = Service::where(
-            'service_name',
-            'Fabric Conditioner'
-        )->first();
+                /*
+                * Get add-on prices.
+                */
+                $detergentService =
+                    Service::query()
+                        ->where(
+                            'service_name',
+                            'Detergent'
+                        )
+                        ->first();
 
-        $detergentPrice = (float) (
-            $detergentService?->price ?? 10
-        );
+                $conditionerService =
+                    Service::query()
+                        ->where(
+                            'service_name',
+                            'Fabric Conditioner'
+                        )
+                        ->first();
 
-        $conditionerPrice = (float) (
-            $conditionerService?->price ?? 15
-        );
+                $detergentPrice =
+                    (float) (
+                        $detergentService?->price ?? 10
+                    );
 
-        /*
-         * Self Service:
-         * ₱100 flat fee
-         * + optional detergent
-         * + optional fabric conditioner
-         *
-         * WDF:
-         * Price is calculated later after staff enters weight.
-         */
-        $initialTotal = $isSelfService
-            ? 100
-                + ($detergentQuantity * $detergentPrice)
-                + ($conditionerQuantity * $conditionerPrice)
-            : 0;
+                $conditionerPrice =
+                    (float) (
+                        $conditionerService?->price ?? 15
+                    );
 
-        $servicePrefix =
-            $service->service_name === 'Wash, Dry, and Fold'
-                ? 'WDF'
-                : 'SS';
 
-        $lastOrder = LaundryOrder::where(
-            'service_number',
-            'like',
-            $servicePrefix . '-%'
-        )
-            ->latest('id')
-            ->first();
+                /*
+                * Initial total.
+                */
+                if ($isSelfService) {
 
-        $nextNumber = $lastOrder
-            ? ((int) substr(
-                $lastOrder->service_number,
-                4
-            ) + 1)
-            : 1;
+                    $initialTotal =
+                        100
+                        + (
+                            $detergentQuantity
+                            * $detergentPrice
+                        )
+                        + (
+                            $conditionerQuantity
+                            * $conditionerPrice
+                        );
 
-        $serviceNumber = $servicePrefix . '-' . str_pad(
-            $nextNumber,
-            5,
-            '0',
-            STR_PAD_LEFT
-        );
+                } else {
 
-        $order = LaundryOrder::create([
-            'customer_id' => $customer->id,
-            'service_id' => $service->id,
-            'order_source' => 'customer',
-            'service_number' => $serviceNumber,
+                    $initialTotal = 0;
+                }
 
-            'kilos' => null,
-            'load_count' => 0,
 
-            'detergent_quantity' =>
-                $detergentQuantity,
+                /*
+                * Generate service number.
+                */
+                $servicePrefix =
+                    $service->service_name === 'Wash, Dry, and Fold'
+                        ? 'WDF'
+                        : 'SS';
 
-            'fabric_conditioner_quantity' =>
-                $conditionerQuantity,
+                $lastOrder =
+                    LaundryOrder::query()
+                        ->where(
+                            'service_number',
+                            'like',
+                            $servicePrefix . '-%'
+                        )
+                        ->latest('id')
+                        ->first();
 
-            'total_amount' =>
-                $initialTotal,
+                $nextNumber = $lastOrder
+                    ? (
+                        (int) substr(
+                            $lastOrder->service_number,
+                            4
+                        ) + 1
+                    )
+                    : 1;
 
-            'status' => 'Received',
+                $serviceNumber =
+                    $servicePrefix . '-' . str_pad(
+                        $nextNumber,
+                        5,
+                        '0',
+                        STR_PAD_LEFT
+                    );
 
-            'payment_status' => 'Unpaid',
-            'paid_at' => null,
 
-            'received_at' => now(),
-            'completed_at' => null,
+                /*
+                * Create order.
+                */
+                $order = LaundryOrder::create([
+                'customer_id' =>
+                    $customer->id,
+
+                'service_id' =>
+                    $service->id,
+
+                'order_source' =>
+                    'customer',
+
+                'service_number' =>
+                    $serviceNumber,
+
+                'kilos' =>
+                    null,
+
+                'load_count' =>
+                    0,
+
+                'detergent_quantity' =>
+                    $detergentQuantity,
+
+                'fabric_conditioner_quantity' =>
+                    $conditionerQuantity,
+
+                'total_amount' =>
+                    $initialTotal,
+
+                'status' =>
+                    'Received',
+
+                'payment_status' =>
+                    'Unpaid',
+
+                'paid_at' =>
+                    null,
+
+                'received_at' =>
+                    now(),
+
+                'completed_at' =>
+                    null,
+            ]);
+
+
+            return $order;
+            }
+            );
+
+
+            /*
+            * Explicitly load everything required
+            * by the confirmation page.
+            */
+            $order->load([
+                'customer',
+                'service',
+            ]);
+
+
+            /*
+            * REDIRECT TO THE RECEIPT PAGE
+            */
+            return redirect()->route(
+                'customer.service-confirmation',
+                ['order' => $order->id]
+            );
+    }
+
+    public function showServiceConfirmation(LaundryOrder $order)
+    {
+        $order->load([
+            'customer',
+            'service',
         ]);
 
         return view(
             'customer.service-confirmation',
-            compact('customer', 'order')
+            [
+                'customer' => $order->customer,
+                'order' => $order,
+            ]
         );
     }
 }

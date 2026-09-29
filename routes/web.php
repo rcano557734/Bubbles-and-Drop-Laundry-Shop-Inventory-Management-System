@@ -50,6 +50,12 @@ Route::get('/avail-service', [CustomerController::class, 'showAvailService'])
 Route::post('/avail-service', [CustomerController::class, 'createOrder'])
     ->name('customer.create-order');
 
+Route::get(
+    '/service-confirmation/{order}',
+    [CustomerController::class, 'showServiceConfirmation']
+)
+    ->name('customer.service-confirmation');
+
 
 // ============================================================
 // Authenticated Users
@@ -129,6 +135,15 @@ Route::middleware('auth')->group(function () {
     Route::post('/staff/orders/{order}/undo-claim', [StaffOrderController::class, 'undoClaim'])
         ->middleware('role:admin,staff')
         ->name('staff.orders.undo-claim');
+
+
+    // --------------------------------------------------------
+    // Machine Monitoring
+    // --------------------------------------------------------
+
+    Route::get('/staff/machines/monitor', [StaffOrderController::class, 'machineMonitor'])
+        ->middleware('role:admin,staff')
+        ->name('staff.machines.monitor');
 
 
     // --------------------------------------------------------

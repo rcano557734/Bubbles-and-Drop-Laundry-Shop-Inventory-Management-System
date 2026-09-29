@@ -935,4 +935,110 @@ class StaffOrderController extends Controller
                 : null,
         ]);
     }
+
+    public function machineMonitor()
+    {
+        $this->authorizeStaffAccess();
+
+        $machines = Machine::query()
+            ->orderBy('id')
+            ->get();
+
+        /*
+        * Only Washing and Drying orders occupy machine sections.
+        *
+        * Washing = TOP section
+        * Drying  = BOTTOM section
+        */
+        $activeOrders = LaundryOrder::query()
+            ->with([
+                'customer',
+                'service',
+                'machines',
+            ])
+            ->whereIn('status', [
+                'Washing',
+                'Drying',
+            ])
+            ->get();
+
+        /*
+        * Build the monitor data by physical machine.
+        */
+        $machineSlots = [];
+
+        foreach ($machines as $machine) {
+
+            $machineSlots[$machine->id] = [
+                'machine' => $machine,
+
+                'washing' => null,
+
+                'drying' => null,
+            ];
+        }
+
+
+        foreach ($activeOrders as $order) {
+
+            foreach ($order->machines as $machine) {
+
+                if (!isset($machineSlots[$machine->id])) {
+                    continue;
+                }
+
+
+                if (
+                    $order->status === 'Washing' &&
+                    $machineSlots[$machine->id]['washing'] === null
+                ) {
+                    $machineSlots[$machine->id]['washing'] = $order;
+                }
+
+
+                if (
+                    $order->status === 'Drying' &&
+                    $machineSlots[$machine->id]['drying'] === null
+                ) {
+                    $machineSlots[$machine->id]['drying'] = $order;
+                }
+            }
+        }
+
+
+        /*
+        * Summary counts.
+        *
+        * Count machine sections, not orders.
+        */
+        $washingSlotsUsed = collect($machineSlots)
+            ->filter(fn ($slot) => $slot['washing'] !== null)
+            ->count();
+
+        $dryingSlotsUsed = collect($machineSlots)
+            ->filter(fn ($slot) => $slot['drying'] !== null)
+            ->count();
+
+        $totalMachines =
+            count($machineSlots);
+
+        $availableWashingSlots =
+            $totalMachines - $washingSlotsUsed;
+
+        $availableDryingSlots =
+            $totalMachines - $dryingSlotsUsed;
+
+
+        return view(
+            'staff.machines.monitor',
+            compact(
+                'machineSlots',
+                'totalMachines',
+                'washingSlotsUsed',
+                'dryingSlotsUsed',
+                'availableWashingSlots',
+                'availableDryingSlots'
+            )
+        );
+    }
 }

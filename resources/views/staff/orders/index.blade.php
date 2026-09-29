@@ -367,7 +367,13 @@
                             <!-- Weight -->
                             <td class="px-5 py-4">
 
-                                @if ($order->kilos !== null)
+                                @if ($order->service->service_name === 'Self Service')
+
+                                    <span class="text-xs font-semibold text-slate-500">
+                                        Not required
+                                    </span>
+
+                                @elseif ($order->kilos !== null)
 
                                     <p class="font-semibold text-slate-800">
                                         {{ number_format($order->kilos, 2) }} kg
@@ -387,7 +393,13 @@
                             <!-- Loads -->
                             <td class="px-5 py-4">
 
-                                @if ($order->load_count > 0)
+                                @if ($order->service->service_name === 'Self Service')
+
+                                    <span class="text-xs font-semibold text-slate-500">
+                                        Flat fee
+                                    </span>
+
+                                @elseif ($order->load_count > 0)
 
                                     <p class="font-semibold text-slate-800">
                                         {{ $order->load_count }}
@@ -411,6 +423,12 @@
 
                                     <p class="font-bold text-slate-800">
                                         ₱{{ number_format($order->total_amount, 2) }}
+                                    </p>
+
+                                @elseif ($order->service->service_name === 'Self Service')
+
+                                    <p class="font-bold text-slate-800">
+                                        ₱100.00
                                     </p>
 
                                 @else

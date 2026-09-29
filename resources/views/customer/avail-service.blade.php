@@ -196,14 +196,13 @@
                 </div>
 
 
-                @if ($errors->any())
+                {{-- SUCCESS MESSAGE --}}
+                @if (session('success'))
 
-                    <div
-                        class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3"
-                    >
+                    <div class="mb-5 rounded-xl border border-green-200 bg-green-50 px-4 py-3">
 
-                        <p class="text-sm font-semibold text-red-700">
-                            Please check the information you entered.
+                        <p class="text-sm font-semibold text-green-700">
+                            {{ session('success') }}
                         </p>
 
                     </div>
@@ -211,10 +210,50 @@
                 @endif
 
 
+                {{-- SESSION ERROR --}}
+                @if (session('error'))
+
+                    <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-3">
+
+                        <p class="text-sm font-semibold text-red-700">
+                            {{ session('error') }}
+                        </p>
+
+                    </div>
+
+                @endif
+
+
+                {{-- VALIDATION ERRORS --}}
+                @if ($errors->any())
+
+                    <div class="mb-5 rounded-xl border border-red-200 bg-red-50 px-4 py-4">
+
+                        <p class="text-sm font-semibold text-red-700">
+                            Please check the information you entered.
+                        </p>
+
+                        <ul class="mt-2 list-disc pl-5 text-sm text-red-600">
+
+                            @foreach ($errors->all() as $error)
+
+                                <li>{{ $error }}</li>
+
+                            @endforeach
+
+                        </ul>
+
+                    </div>
+
+                @endif
+
+
                 <form
+                    id="serviceForm"
                     method="POST"
                     action="{{ route('customer.create-order') }}"
                     class="space-y-6"
+                    onsubmit="return preventDoubleSubmit(this);"
                 >
 
                     @csrf
@@ -694,14 +733,14 @@
 
 
                         <button
+                            id="confirmServiceButton"
                             type="submit"
                             class="h-11 px-7 rounded-xl
-                                   bg-[#4f74d9] text-white
-                                   font-semibold text-sm
-                                   shadow-sm
-                                   hover:bg-[#3f63c8]
-                                   transition"
-                        >
+                                bg-[#4f74d9] text-white
+                                font-semibold text-sm
+                                shadow-sm
+                                hover:bg-[#3f63c8]
+                                transition">
                             Confirm Service
                         </button>
 
@@ -873,6 +912,47 @@
 
 
     updateServicePreview();
+
+</script>
+
+<script>
+
+    let serviceFormSubmitting = false;
+
+
+    function preventDoubleSubmit(form)
+    {
+        if (serviceFormSubmitting) {
+            return false;
+        }
+
+
+        serviceFormSubmitting = true;
+
+
+        const button =
+            document.getElementById(
+                'confirmServiceButton'
+            );
+
+
+        if (button) {
+
+            button.disabled = true;
+
+            button.textContent =
+                'Submitting...';
+
+            button.classList.add(
+                'opacity-60',
+                'cursor-not-allowed'
+            );
+
+        }
+
+
+        return true;
+    }
 
 </script>
 
